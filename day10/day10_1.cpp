@@ -1,101 +1,86 @@
 #include <stdio.h>
 #include <vector>
-#include <unordered_map>
 
-struct DiskBlock {
-    int size;
-    unsigned long long start;
-    void* next_block;
+struct Vector2D {
+    int x;
+    int y;
 };
 
+int GetTrailScore(std::vector<std::vector<int>*> data, Vector2D start_pos, bool** visited);
+
 int main() {
-    FILE* input = fopen("input9.txt", "r");
+    FILE* input = fopen("input10.txt", "r");
+
+    std::vector<std::vector<int>*> data;
+    std::vector<Vector2D> starts;
 
     char c;
-    int size;
-    unsigned long long id = 0;
-    bool file = true;
-    std::vector<unsigned long long> res_string;
-    std::unordered_map<unsigned long long, DiskBlock> files;
+    std::vector<int>* line = new std::vector<int>;
     while ((c = fgetc(input)) != EOF) {
         if (c == '\n') {
-            id--;
-            break;
-        }
-        size = c - '0';
-        if (file) {
-            files[id] = DiskBlock{size, res_string.size(), nullptr};
-            if (id > 0) {
-                files[id - 1].next_block = &files[id];
-            }
-            for (int i = 0;i < size;i++) {
-                res_string.push_back(id);
-            }
-            id++;
-            file = false;
+            data.push_back(line);
+            line = new std::vector<int>;
         }
         else {
-            for (int i = 0;i < size;i++) {
-                res_string.push_back(-1);
+            line->push_back(c - '0');
+        }
+    }
+    delete line;
+
+    for (size_t i = 0;i < data.size();i++) {
+        for (size_t j = 0;j < data[0]->size();j++) {
+            if ((*data[i])[j] == 0) {
+                starts.push_back(Vector2D{static_cast<int>(j), static_cast<int>(i)});
             }
-            file = true;
         }
     }
-    int max_id = id;
 
-    for (unsigned long long i = 0;i < res_string.size();i++) {
-        if (res_string[i] == -1) {
-            printf(".");
+    int result = 0;
+    for (size_t i = 0;i < starts.size();i++) {
+        bool** visited = new bool*[data.size()];
+        for (size_t j = 0;j < data.size();j++) {
+            visited[j] = new bool[data[0]->size()];
         }
-        else {
-            printf("%d", res_string[i]);
-        }
-    }
-    printf("\n");
-
-    for (int i = max_id;i > 0;i--) {
-        DiskBlock* cur_block = &files[0];
-        while (cur_block->start < files[i].start) {
-            DiskBlock* next_block = (DiskBlock*)cur_block->next_block;
-            if (next_block->start - cur_block->start - cur_block->size >= files[i].size) {
-                files[i].next_block = cur_block->next_block;
-                files[i].start = cur_block->start + cur_block->size;
-                files[i - 1].next_block = nullptr;
-                cur_block->next_block = &files[i];
-                break;
+        for (size_t j = 0;j < data.size();j++) {
+            for (size_t k = 0;k < data[0]->size();k++) {
+                visited[j][k] = false;
             }
-            cur_block = (DiskBlock*)cur_block->next_block;
         }
+
+        result += GetTrailScore(data, starts[i], visited);
     }
 
-    for (int i = 0;i < res_string.size();i++) {
-        res_string[i] = -1;
-    }
-    for (int i = 0;i <= max_id;i++) {
-        for (int j = files[i].start;j < files[i].start + files[i].size;j++) {
-            printf("%d %d\n", i, j);
-            res_string[j] = i;
-        }
-    }
-
-    for (unsigned long long i = 0;i < res_string.size();i++) {
-        if (res_string[i] == -1) {
-            printf(".");
-        }
-        else {
-            printf("%d", res_string[i]);
-        }
-    }
-    printf("\n");
-
-    unsigned long long result = 0;
-    for (unsigned long long i = 0;i < res_string.size();i++) {
-        if (res_string[i] != -1) {
-            result += i * res_string[i];
-        }
-    }
-
-    printf("%lld\n", result);
+    printf("%d\n", result);
 
     return 0;
+}
+
+int GetTrailScore(std::vector<std::vector<int>*> data, Vector2D start_pos, bool** visited) {
+    int current_val = (*data[start_pos.y])[start_pos.x];
+
+    if (current_val == 9) {
+        // if (visited[start_pos.y][start_pos.x]) return 0; // part1
+        visited[start_pos.y][start_pos.x] = true;
+        return 1;
+    }
+
+    int result = 0;
+    if (start_pos.y > 0) {
+        if ((*data[start_pos.y - 1])[start_pos.x] == (current_val + 1))
+            result += GetTrailScore(data, Vector2D{start_pos.x, start_pos.y - 1}, visited);
+    }
+    if (start_pos.y < (int)data.size() - 1) {
+        if ((*data[start_pos.y + 1])[start_pos.x] == (current_val + 1))
+            result += GetTrailScore(data, Vector2D{start_pos.x, start_pos.y + 1}, visited);
+    }
+    if (start_pos.x > 0) {
+        if ((*data[start_pos.y])[start_pos.x - 1] == (current_val + 1))
+            result += GetTrailScore(data, Vector2D{start_pos.x - 1, start_pos.y}, visited);
+    }
+    if (start_pos.x < (int)data.size() - 1) {
+        if ((*data[start_pos.y])[start_pos.x + 1] == (current_val + 1))
+            result += GetTrailScore(data, Vector2D{start_pos.x + 1, start_pos.y}, visited);
+    }
+
+    return result;
 }
